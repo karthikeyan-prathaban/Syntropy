@@ -1,0 +1,124 @@
+{
+  "accounts": [
+    {
+      "linked_acc_ref": "mock-acc-1",
+      "masked_acc_number": "XXXX1234",
+      "account_type": "SAVINGS",
+      "current_balance": 42000,
+      "currency": "INR",
+      "fip_id": "mock-fip"
+    }
+  ],
+  "transactions": [
+    {
+      "txn_id": "mock-0",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 450,
+      "txn_type": "DEBIT",
+      "narration": "swiggy order",
+      "mode": "UPI",
+      "category": "Food & Dining",
+      "transaction_timestamp": "2026-09-01T09:22:43.426696",
+      "balance_after": 45000
+    },
+    {
+      "txn_id": "mock-1",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 320,
+      "txn_type": "DEBIT",
+      "narration": "uber trip",
+      "mode": "UPI",
+      "category": "Transport",
+      "transaction_timestamp": "2026-08-30T09:22:43.426696",
+      "balance_after": 44000
+    },
+    {
+      "txn_id": "mock-2",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 2499,
+      "txn_type": "DEBIT",
+      "narration": "amazon purchase",
+      "mode": "CARD",
+      "category": "Shopping",
+      "transaction_timestamp": "2026-08-28T09:22:43.426696",
+      "balance_after": 43000
+    },
+    {
+      "txn_id": "mock-3",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 85000,
+      "txn_type": "CREDIT",
+      "narration": "salary credit",
+      "mode": "NEFT",
+      "category": "Salary & Income",
+      "transaction_timestamp": "2026-08-26T09:22:43.426696",
+      "balance_after": 42000
+    },
+    {
+      "txn_id": "mock-4",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 599,
+      "txn_type": "DEBIT",
+      "narration": "netflix subscription",
+      "mode": "UPI",
+      "category": "Entertainment",
+      "transaction_timestamp": "2026-08-24T09:22:43.426696",
+      "balance_after": 41000
+    },
+    {
+      "txn_id": "mock-5",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 150,
+      "txn_type": "DEBIT",
+      "narration": "metro recharge",
+      "mode": "UPI",
+      "category": "Transport",
+      "transaction_timestamp": "2026-08-22T09:22:43.426696",
+      "balance_after": 40000
+    },
+    {
+      "txn_id": "mock-6",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 1200,
+      "txn_type": "DEBIT",
+      "narration": "electricity bill",
+      "mode": "UPI",
+      "category": "Bills & Utilities",
+      "transaction_timestamp": "2026-08-20T09:22:43.426696",
+      "balance_after": 39000
+    },
+    {
+      "txn_id": "mock-7",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 890,
+      "txn_type": "DEBIT",
+      "narration": "zomato food",
+      "mode": "UPI",
+      "category": "Food & Dining",
+      "transaction_timestamp": "2026-08-18T09:22:43.426696",
+      "balance_after": 38000
+    },
+    {
+      "txn_id": "mock-8",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 5000,
+      "txn_type": "DEBIT",
+      "narration": "groww sip",
+      "mode": "UPI",
+      "category": "Investments",
+      "transaction_timestamp": "2026-08-16T09:22:43.426696",
+      "balance_after": 37000
+    },
+    {
+      "txn_id": "mock-9",
+      "linked_acc_ref": "mock-acc-1",
+      "amount": 350,
+      "txn_type": "DEBIT",
+      "narration": "pharmacy",
+      "mode": "UPI",
+      "category": "Healthcare",
+      "transaction_timestamp": "2026-08-14T09:22:43.426696",
+      "balance_after": 36000
+    }
+  ]
+}
