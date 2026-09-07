@@ -216,3 +216,28 @@ export async function trackAnalyticsEvent(event: string, props: Record<string, a
     // Non-blocking analytics
   }
 }
+
+// ── Bank Onboarding with OTP Verification ──────────────────────────────────
+
+export interface OnboardBankPayload {
+  user_id: number;
+  bank_id: string;
+  mobile: string;
+  otp: string;
+  selected_accounts?: string[];
+}
+
+export interface OnboardBankResponse {
+  status: string;
+  consent_id: string;
+  bank: string;
+  accounts_count: number;
+  transactions_count: number;
+  message: string;
+}
+
+export async function onboardBankWithOtp(payload: OnboardBankPayload): Promise<OnboardBankResponse> {
+  const { data } = await api.post<OnboardBankResponse>("/consent/onboard-bank", payload);
+  return data;
+}
+

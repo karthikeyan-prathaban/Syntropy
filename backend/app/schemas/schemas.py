@@ -93,3 +93,22 @@ class DashboardResponse(BaseModel):
     recent_transactions: list[TransactionResponse]
     consent_status: str | None = None
     accounts: list[dict] = []
+
+
+# ── Bank Onboarding ───────────────────────────────────────────────────────────
+class BankOnboardPayload(BaseModel):
+    user_id: int
+    bank_id: str
+    mobile: str
+    otp: str
+    selected_accounts: Optional[list[str]] = None
+
+
+class BankOnboardResponse(BaseModel):
+    status: str
+    consent_id: str
+    bank: str
+    accounts_count: int
+    transactions_count: int
+    message: str
+

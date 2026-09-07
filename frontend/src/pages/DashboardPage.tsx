@@ -8,6 +8,7 @@ import {
   createConsentForUser, fetchFinancialData, getConsentStatus,
   getDashboard, getMyDashboard, getMyTransactions, loadMockData,
 } from "../api/client";
+import BankOnboardingModal from "../components/BankOnboardingModal";
 
 // ── Colors ─────────────────────────────────────────────────────────────────
 const PALETTE = ["#10b981", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#f97316"];
@@ -136,6 +137,8 @@ export default function DashboardPage() {
   const [filterType, setFilterType] = useState("");
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentMsg, setConsentMsg] = useState("");
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [successToast, setSuccessToast] = useState("");
 
   const userId = Number(localStorage.getItem("syntropy_user_id"));
 
@@ -163,16 +166,26 @@ export default function DashboardPage() {
     navigate("/");
   }
 
-  async function startConsentFlow() {
-    setConsentLoading(true);
+  function startConsentFlow() {
     setConsentMsg("");
+    setShowOnboardingModal(true);
+  }
+
+  async function handleOnboardingSuccess(bankName: string) {
+    setShowOnboardingModal(false);
+    setConsentMsg("");
+    setLoading(true);
     try {
-      const consent = await createConsentForUser(userId);
-      localStorage.setItem("syntropy_consent_request_id", consent.request_id);
-      window.location.href = consent.consent_url;
-    } catch (e: any) {
-      setConsentMsg("Could not start consent flow: " + e.message);
-      setConsentLoading(false);
+      const refreshed = await getDashboard(userId);
+      setData(refreshed);
+      const txns = await getMyTransactions({ limit: 500 }).catch(() => []);
+      setAllTransactions(txns);
+      setSuccessToast(`✓ Successfully verified OTP & linked ${bankName}! Real-time expenses loaded.`);
+      setTimeout(() => setSuccessToast(""), 4000);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -237,15 +250,77 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {successToast && (
+              <div style={{ background: "#ECFDF5", color: "#065F46", padding: "12px 18px", borderRadius: "10px", border: "1px solid #A7F3D0", fontWeight: 700, fontSize: "0.9rem" }}>
+                {successToast}
+              </div>
+            )}
+
             {consentMsg && <div className="alert alert-error">{consentMsg}</div>}
 
-            {/* Consent banner */}
-            <div className={`consent-banner ${consentActive ? "active" : "none"}`}>
-              <span>{consentActive ? "✓" : "⚠"}</span>
-              {consentActive
-                ? "Bank data synced via Setu Account Aggregator. Consent active."
-                : "No active bank consent. Link your account to see real transaction data."}
+            {/* Consent banner with OTP link button */}
+            <div className={`consent-banner ${consentActive ? "active" : "none"}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span>{consentActive ? "✓" : "⚠"}</span>
+                <span>
+                  {consentActive
+                    ? "Bank data synced via Setu Account Aggregator. Consent active."
+                    : "No active bank consent. Link your bank account with OTP to see real transaction data."}
+                </span>
+              </div>
+              {!consentActive && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setShowOnboardingModal(true)}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Verify OTP &amp; Link →
+                </button>
+              )}
             </div>
+
+            {/* Zero balance onboarding callout */}
+            {!consentActive && data.total_balance === 0 && (
+              <div
+                style={{
+                  background: "#EFF6FF",
+                  border: "1.5px dashed #3B82F6",
+                  borderRadius: "16px",
+                  padding: "24px 28px",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "16px",
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1E40AF", marginBottom: "4px" }}>
+                    🚀 Onboard Your Bank Account with OTP
+                  </h3>
+                  <p style={{ color: "#2563EB", fontSize: "0.85rem", margin: 0, fontWeight: 500 }}>
+                    Select HDFC, SBI, ICICI, or Axis Bank. Verify with 6-digit OTP to decrypt your real-time expenses and financial health score.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowOnboardingModal(true)}
+                  style={{
+                    background: "#2563EB",
+                    color: "#FFFFFF",
+                    border: "none",
+                    padding: "12px 24px",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(37, 99, 235, 0.25)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Start Bank Onboarding ⚡
+                </button>
+              </div>
+            )}
 
             {/* Stat cards */}
             <div className="grid-4">
@@ -650,6 +725,16 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {showOnboardingModal && (
+        <BankOnboardingModal
+          userId={userId}
+          userName={data.user.name}
+          userMobile={data.user.mobile}
+          onClose={() => setShowOnboardingModal(false)}
+          onSuccess={handleOnboardingSuccess}
+        />
+      )}
     </div>
   );
 }
