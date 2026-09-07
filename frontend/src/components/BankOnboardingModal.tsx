@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { onboardBankWithOtp } from "../api/client";
+import { onboardBankWithOtp, createConsentForUser } from "../api/client";
 import { Analytics } from "../utils/analytics";
 
 interface BankOption {
@@ -42,6 +42,26 @@ export default function BankOnboardingModal({
   const [timer, setTimer] = useState(28);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  async function handleLaunchLiveSetuFlow() {
+    setLoading(true);
+    setError("");
+    try {
+      const consent = await createConsentForUser(userId);
+      if (consent && consent.consent_url) {
+        localStorage.setItem("syntropy_consent_request_id", consent.request_id);
+        window.location.href = consent.consent_url;
+      } else {
+        setError("Setu consent URL not available. Proceeding with in-app OTP.");
+        setStep(2);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Could not connect to Setu AA Gateway. Using in-app OTP.");
+      setStep(2);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // Step 4 progress indicators
   const [syncPhase, setSyncPhase] = useState(0);
@@ -322,32 +342,57 @@ export default function BankOnboardingModal({
                 <div>🛡️ <strong>Safety:</strong> Read-only encrypted data. Syntropy cannot move or withdraw funds.</div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (mobile.length < 10) {
-                    setError("Please enter a valid 10-digit mobile number.");
-                    return;
-                  }
-                  setError("");
-                  setTimer(28);
-                  setStep(2);
-                }}
-                style={{
-                  width: "100%",
-                  background: "#0F172A",
-                  color: "#FFFFFF",
-                  border: "none",
-                  padding: "14px",
-                  borderRadius: "12px",
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 14px rgba(15, 23, 42, 0.2)",
-                }}
-              >
-                Send Bank Verification OTP →
-              </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <button
+                  type="button"
+                  onClick={handleLaunchLiveSetuFlow}
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    background: "#2563EB",
+                    color: "#FFFFFF",
+                    border: "none",
+                    padding: "14px",
+                    borderRadius: "12px",
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(37, 99, 235, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                >
+                  {loading ? "Connecting to Setu AA…" : "⚡ Connect via Live Setu AA (Official Screen) ↗"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mobile.length < 10) {
+                      setError("Please enter a valid 10-digit mobile number.");
+                      return;
+                    }
+                    setError("");
+                    setTimer(28);
+                    setStep(2);
+                  }}
+                  style={{
+                    width: "100%",
+                    background: "#0F172A",
+                    color: "#FFFFFF",
+                    border: "none",
+                    padding: "12px",
+                    borderRadius: "12px",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Or Continue In-App Verification →
+                </button>
+              </div>
             </div>
           )}
 

@@ -17,10 +17,16 @@ class SetuClient:
         if not force_refresh and self._access_token and time.time() < self._token_expires_at:
             return self._access_token
 
+        headers = {
+            "client": "bridge",
+            "Content-Type": "application/json",
+            "User-Agent": "curl/8.7.1",
+            "Accept": "*/*",
+        }
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.settings.setu_auth_url,
-                headers={"client": "bridge", "Content-Type": "application/json"},
+                headers=headers,
                 json={
                     "clientID": self.settings.setu_client_id,
                     "grant_type": "client_credentials",
@@ -31,7 +37,7 @@ class SetuClient:
             data = response.json()
 
         self._access_token = data["access_token"]
-        self._token_expires_at = time.time() + 3500
+        self._token_expires_at = time.time() + 3000
         return self._access_token
 
     def _headers(self, token: str) -> dict[str, str]:
@@ -39,6 +45,8 @@ class SetuClient:
             "Authorization": f"Bearer {token}",
             "x-product-instance-id": self.settings.setu_product_instance_id,
             "Content-Type": "application/json",
+            "User-Agent": "curl/8.7.1",
+            "Accept": "*/*",
         }
 
     async def list_fips(self) -> dict[str, Any]:
@@ -57,7 +65,11 @@ class SetuClient:
         end = now + timedelta(days=365)
         data_start = now - timedelta(days=365)
 
-        vua = mobile if "@" in mobile else f"{mobile}@onemoney"
+        # In Setu AA v2, passing pure 10-digit mobile automatically routes to Setu AA consent UI
+        clean_mobile = "".join(c for c in (mobile or "") if c.isdigit())
+        if len(clean_mobile) > 10:
+            clean_mobile = clean_mobile[-10:]
+        vua = clean_mobile if len(clean_mobile) == 10 else "9999999999"
 
         payload = {
             "vua": vua,
@@ -90,7 +102,7 @@ class SetuClient:
             )
             if response.status_code >= 400:
                 raise httpx.HTTPStatusError(
-                    f"Consent creation failed: {response.text}",
+                    f"Consent creation failed ({response.status_code}): {response.text}",
                     request=response.request,
                     response=response,
                 )

@@ -30,7 +30,13 @@ settings = get_settings()
 
 def _extract_consent_id(result: dict, request_id: str) -> str:
     detail = result.get("detail") or {}
-    return detail.get("consentId") or result.get("consentId") or request_id
+    return (
+        detail.get("consentId")
+        or detail.get("id")
+        or result.get("consentId")
+        or result.get("id")
+        or request_id
+    )
 
 
 def _normalize_mobile(mobile: str) -> str:
@@ -337,7 +343,7 @@ async def fetch_financial_data(request_id: str, db: Session = Depends(get_db)):
     record.consent_id = consent_id
     db.commit()
 
-    if status != "ACTIVE":
+    if status not in ("ACTIVE", "APPROVED", "SUCCESS"):
         raise HTTPException(status_code=400, detail=f"Consent not active. Current status: {status}")
 
     return await _ingest_fi_data(record.user_id, consent_id, db)

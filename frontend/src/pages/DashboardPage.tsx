@@ -166,9 +166,22 @@ export default function DashboardPage() {
     navigate("/");
   }
 
-  function startConsentFlow() {
+  async function startConsentFlow() {
+    setConsentLoading(true);
     setConsentMsg("");
-    setShowOnboardingModal(true);
+    try {
+      const consent = await createConsentForUser(userId);
+      if (consent && consent.consent_url) {
+        localStorage.setItem("syntropy_consent_request_id", consent.request_id);
+        window.location.href = consent.consent_url;
+        return;
+      }
+      setShowOnboardingModal(true);
+    } catch {
+      setShowOnboardingModal(true);
+    } finally {
+      setConsentLoading(false);
+    }
   }
 
   async function handleOnboardingSuccess(bankName: string) {
