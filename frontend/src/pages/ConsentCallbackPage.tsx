@@ -17,9 +17,14 @@ export default function ConsentCallbackPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    const requestId = localStorage.getItem("syntropy_consent_request_id");
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlRequestId = searchParams.get("id") || searchParams.get("requestId") || searchParams.get("consent_id");
+    if (urlRequestId) {
+      localStorage.setItem("syntropy_consent_request_id", urlRequestId);
+    }
+    const requestId = urlRequestId || localStorage.getItem("syntropy_consent_request_id");
     if (!requestId) {
-      setError("No consent session found. Please start again.");
+      setError("No consent session found. Please initiate bank connection again.");
       return;
     }
 
