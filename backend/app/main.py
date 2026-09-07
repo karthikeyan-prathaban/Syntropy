@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 import json
 import os
 
@@ -39,19 +40,32 @@ def root():
 # ── Waitlist ──────────────────────────────────────────────────────────────────
 class WaitlistEntry(BaseModel):
     email: str
+    source: Optional[str] = "web"
+    utm: Optional[dict] = None
 
 
 @app.post("/api/waitlist")
 async def join_waitlist(entry: WaitlistEntry):
-    """Capture waitlist emails — stored in waitlist.json (swap with Mailchimp/Loops later)."""
+    """Capture waitlist emails with full marketing attribution — stored in waitlist.json."""
     path = "waitlist.json"
     try:
         data = json.loads(open(path).read()) if os.path.exists(path) else []
-        if entry.email not in data:
-            data.append(entry.email)
+        emails = [item["email"] if isinstance(item, dict) else item for item in data]
+        if entry.email not in emails:
+            new_record = {
+                "email": entry.email,
+                "source": entry.source or "web",
+                "utm": entry.utm or {},
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            data.append(new_record)
             with open(path, "w") as f:
                 json.dump(data, f, indent=2)
-        return {"status": "added", "total": len(data)}
+            pos = 1480 + len(data)
+        else:
+            idx = emails.index(entry.email)
+            pos = 1480 + idx + 1
+        return {"status": "added", "total": len(data), "position": pos}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 

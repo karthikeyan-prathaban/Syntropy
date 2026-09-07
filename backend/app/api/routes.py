@@ -452,3 +452,33 @@ def load_mock_data(user_id: int, db: Session = Depends(get_db)):
         ))
     db.commit()
     return {"status": "loaded", "transactions": len(data["transactions"])}
+
+
+# ── Setu Webhook ──────────────────────────────────────────────────────────────
+
+@router.post("/webhooks/setu")
+async def setu_webhook(payload: dict, db: Session = Depends(get_db)):
+    """
+    Handle incoming Setu Account Aggregator webhooks.
+    Triggered when:
+    - User completes/rejects consent (CONSENT_STATUS_UPDATE)
+    - FI data fetch finishes (FI_NOTIFICATION)
+    """
+    event_type = payload.get("event") or payload.get("type") or "UNKNOWN"
+    data = payload.get("data") or payload
+    consent_id = data.get("consentId") or data.get("id")
+    status = data.get("status")
+
+    if consent_id and status:
+        record = (
+            db.query(ConsentRecord)
+            .filter((ConsentRecord.consent_id == consent_id) | (ConsentRecord.request_id == consent_id))
+            .first()
+        )
+        if record:
+            record.status = status
+            record.updated_at = datetime.utcnow()
+            db.commit()
+
+    return {"status": "received", "event": event_type, "ok": True}
+

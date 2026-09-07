@@ -9,7 +9,11 @@ export function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Request failed";
 }
 
-const api = axios.create({ baseURL: "/api" });
+const apiBase = import.meta.env.VITE_API_BASE
+  ? `${import.meta.env.VITE_API_BASE.replace(/\/$/, "")}/api`
+  : "/api";
+
+const api = axios.create({ baseURL: apiBase });
 
 // Attach JWT token to every request if available
 api.interceptors.request.use((config) => {
@@ -173,4 +177,42 @@ export async function pingSetu() {
 export async function loadMockData(userId: number) {
   const { data } = await api.post(`/mock/load/${userId}`);
   return data;
+}
+
+// ── Marketing & Tracking ───────────────────────────────────────────────────
+
+export interface WaitlistPayload {
+  email: string;
+  source?: string;
+  utm?: Record<string, string>;
+}
+
+export interface WaitlistResponse {
+  status: string;
+  total?: number;
+  position?: number;
+  detail?: string;
+}
+
+export async function joinWaitlist(payload: WaitlistPayload): Promise<WaitlistResponse> {
+  const { data } = await api.post<WaitlistResponse>("/waitlist", payload);
+  return data;
+}
+
+export async function getWaitlistCount(): Promise<{ count: number }> {
+  const { data } = await api.get<{ count: number }>("/waitlist/count");
+  return data;
+}
+
+export async function trackAnalyticsEvent(event: string, props: Record<string, any> = {}): Promise<void> {
+  try {
+    await api.post("/analytics", {
+      event,
+      props,
+      ts: Date.now(),
+      url: window.location.href,
+    });
+  } catch {
+    // Non-blocking analytics
+  }
 }

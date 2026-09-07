@@ -31,11 +31,11 @@ services:
           name: syntropy-db
           property: connectionString
       - key: FRONTEND_URL
-        value: https://syntropy.onrender.com
+        value: https://syntropy-k5fj.onrender.com
       - key: REDIRECT_URL
-        value: https://syntropy.onrender.com/consent/callback
+        value: https://syntropy-k5fj.onrender.com/consent/callback
       - key: CORS_ORIGINS
-        value: https://syntropy.onrender.com,http://localhost:5173
+        value: https://syntropy-k5fj.onrender.com,https://syntropy.onrender.com,http://localhost:5173
       - key: GEMINI_API_KEY
         sync: false
 

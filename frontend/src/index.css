@@ -566,3 +566,10 @@ h3 { font-size: 1.25rem; }
   background: radial-gradient(circle, rgba(6,182,212,0.05) 0%, transparent 70%);
   bottom: -50px; right: -50px;
 }
+
+@media (min-width: 768px) {
+  .desktop-links {
+    display: flex !important;
+  }
+}
+

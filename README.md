@@ -1,54 +1,70 @@
-# Syntropy — Open Finance Dashboard
+# Syntropy — Open Finance Platform
 
-> **AI-powered personal finance. Built on India's Account Aggregator framework.**
+> **AI-powered personal finance intelligence. Built on India's RBI Account Aggregator framework.**
+> **Zero SMS scraping. Zero email reading. Real-time cross-bank intelligence.**
 
+[![Live Production](https://img.shields.io/badge/Production-Live-emerald.svg)](https://syntropy-k5fj.onrender.com)
+[![API Status](https://img.shields.io/badge/API-v2.0.0--Active-cyan.svg)](https://syntropy-api.onrender.com/api/health)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
+
+---
+
+## 🌐 Live Deployments
+
+- **Web Application & Interactive Landing Page:** [https://syntropy-k5fj.onrender.com](https://syntropy-k5fj.onrender.com)
+- **Production API:** [https://syntropy-api.onrender.com](https://syntropy-api.onrender.com)
+- **API Health Check:** [https://syntropy-api.onrender.com/api/health](https://syntropy-api.onrender.com/api/health)
+- **Setu Webhook Endpoint:** `https://syntropy-api.onrender.com/api/webhooks/setu`
 
 ---
 
 ## What is Syntropy?
 
-Syntropy is a **consent-based personal finance SaaS** platform that connects to your Indian bank accounts via the [RBI Account Aggregator framework](https://sahamati.org.in) (Setu AA) and gives you:
+Syntropy is a **consent-based financial intelligence platform** that connects to Indian bank accounts, fixed deposits, and mutual funds via the [RBI Account Aggregator framework](https://sahamati.org.in) (Setu AA).
 
-- 📊 **Live spend analytics** — category breakdowns, monthly trends, cashflow
-- 🤖 **AI-powered advisor** — personalized money-saving recommendations (Gemini AI)
-- 🔐 **Privacy-first** — no credentials stored, consent-based data only
-- ⚡ **Financial Health Score** — your money at a glance
+### Why Syntropy vs Legacy PFM Apps?
+- 🚫 **Zero SMS Scraping:** No reading personal SMS, OTPs, or messages.
+- 🚫 **Zero Email Reading:** No Google OAuth inbox access.
+- 🔐 **Cryptographically Signed:** Data delivered via 256-bit encrypted bank pipes.
+- ⚡ **Interactive Terminal:** Live simulation of cross-bank cashflows in browser.
+- 📄 **Bank Statement Normalizer:** Converts cryptic raw UPI strings (`UPI/4291039401/...`) into clean merchant names with 1-click tax CSV/PDF exports.
+- 🤖 **Autonomous AI Co-Pilot:** Actionable recommendations powered by Gemini AI.
+- 📈 **Growth & Marketing Engine:** Built-in UTM attribution, anonymous profiling, and viral waitlist ranking.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Syntropy Platform                │
-├─────────────┬──────────────┬───────────────────────┤
-│  React SPA  │  FastAPI API │   Setu AA Gateway     │
-│  Vite + TS  │  Python 3.13 │   126+ Indian Banks   │
-│  port:5173  │  port:8001   │   sandbox/production  │
-└─────────────┴──────────────┴───────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                          Syntropy Open Finance                         │
+├─────────────────────┬──────────────────────────┬───────────────────────┤
+│    Frontend SPA     │       FastAPI API        │    Setu AA Gateway    │
+│ React 18 + TS + Vite│  Python 3.11 + Uvicorn   │   40+ Indian Banks    │
+│  syntropy-k5fj      │       syntropy-api       │  OneMoney / Anumati   │
+└─────────────────────┴──────────────────────────┴───────────────────────┘
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Clone & Setup Backend
+### 1. Setup Backend
 ```bash
 git clone https://github.com/karthikeyan-ui/Syntropy.git
 cd Syntropy/backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # fill in your Setu credentials
+cp .env.example .env
 uvicorn app.main:app --reload --port 8001
 ```
 
-### 2. Start Frontend
+### 2. Setup Frontend
 ```bash
-cd frontend
+cd Syntropy/frontend
 npm install
 npm run dev
 ```
@@ -57,77 +73,30 @@ Open [http://localhost:5173](http://localhost:5173)
 
 ---
 
-## Environment Variables
+## Setu Account Aggregator Integration & Bridge Mapping
 
-```env
-SETU_CLIENT_ID=your_client_id
-SETU_CLIENT_SECRET=your_client_secret
-SETU_ORG_ID=your_org_id
-SETU_PRODUCT_INSTANCE_ID=your_product_instance_id
-SETU_FIU_BASE_URL=https://fiu-sandbox.setu.co
-JWT_SECRET=your-secret-key-min-32-chars
-DATABASE_URL=sqlite:///./syntropy.db
-GEMINI_API_KEY=optional_for_ai_advice
-REDIRECT_URL=https://yourdomain.com/consent/callback
-CORS_ORIGINS=https://yourdomain.com,http://localhost:5173
-```
+To connect Syntropy to your Setu AA instance:
 
----
-
-## Features
-
-| Feature | Status |
-|---------|--------|
-| JWT Auth (signup/login) | ✅ |
-| Setu AA Consent Flow | ✅ |
-| Transaction Categorization | ✅ |
-| Spend Analytics Dashboard | ✅ |
-| AI Financial Advisor | ✅ (Gemini) |
-| Financial Health Score | ✅ |
-| 6-month Trend Charts | ✅ |
-| Transaction Search/Filter | ✅ |
-| PostgreSQL support | ✅ |
-| Render.com Deploy Config | ✅ |
-
----
-
-## Deploy to Render
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-
-The `render.yaml` at root configures everything automatically:
-- FastAPI backend (Python)
-- React static site
-- PostgreSQL managed database
-
----
-
-## Tech Stack
-
-**Backend:** FastAPI · SQLAlchemy · Pydantic · JWT · bcrypt · httpx · Google Gemini AI
-
-**Frontend:** React 18 · TypeScript · Vite · Recharts · Axios · React Router
-
-**Infrastructure:** Render.com · PostgreSQL · Setu AA Framework
-
----
-
-## Setu Account Aggregator Integration
-
-Syntropy uses [Setu's FIU APIs](https://docs.setu.co/data/account-aggregator/overview) to:
-
-1. Create consent requests for users
-2. Redirect to Setu's AA consent interface
-3. Fetch Financial Information (FI) via sessions
-4. Parse and store transaction data from 126+ banks
-
-Supported data types: `DEPOSIT` accounts (savings, current, FD)
-
----
-
-## Contributing
-
-PRs welcome. Please open an issue first to discuss what you'd like to change.
+1. In [Setu Bridge](https://bridge.setu.co), navigate to **Account Aggregator → Settings**.
+2. **Whitelist Callback / Redirect URL:**
+   ```text
+   https://syntropy-k5fj.onrender.com/consent/callback
+   ```
+3. **Configure Webhook Endpoint:**
+   ```text
+   https://syntropy-api.onrender.com/api/webhooks/setu
+   ```
+4. **Environment Variables:**
+   ```env
+   SETU_CLIENT_ID=your_client_id
+   SETU_CLIENT_SECRET=your_client_secret
+   SETU_ORG_ID=8890f2ec-f6af-4180-8062-e05f5ae0eb73
+   SETU_PRODUCT_INSTANCE_ID=796f9c0e-e9d7-437c-8148-9423228909b7
+   SETU_FIU_BASE_URL=https://fiu-sandbox.setu.co   # or https://fiu.setu.co
+   FRONTEND_URL=https://syntropy-k5fj.onrender.com
+   REDIRECT_URL=https://syntropy-k5fj.onrender.com/consent/callback
+   CORS_ORIGINS=https://syntropy-k5fj.onrender.com,https://syntropy.onrender.com,http://localhost:5173
+   ```
 
 ---
 
@@ -135,6 +104,5 @@ PRs welcome. Please open an issue first to discuss what you'd like to change.
 
 MIT © 2026 Syntropy / Karthikeyan Prathaban
 
----
+*Built with ❤️ in Chennai, India — on the idea that every Indian deserves to understand their money with complete privacy.*
 
-*Built with ❤️ in Chennai, India — on the idea that every Indian deserves to understand their money.*

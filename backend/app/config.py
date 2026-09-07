@@ -28,7 +28,16 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        for default_origin in [
+            "https://syntropy-k5fj.onrender.com",
+            "https://syntropy.onrender.com",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]:
+            if default_origin not in origins:
+                origins.append(default_origin)
+        return origins
 
 
 @lru_cache
