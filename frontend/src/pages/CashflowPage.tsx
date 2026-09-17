@@ -51,11 +51,32 @@ export function CashflowPage() {
         <Reveal>
           <Card>
             <CardTitle>Runway forecast</CardTitle>
+            <div className="flex gap-6 mt-4">
+              <div>
+                <div className="text-muted text-xs">Runway</div>
+                <div className="font-mono font-medium">
+                  {forecast.data?.runway_months != null ? `${forecast.data.runway_months} mo` : "Cashflow positive"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted text-xs">Net monthly</div>
+                <div className={`font-mono font-medium ${(forecast.data?.net_monthly ?? 0) >= 0 ? "text-jade" : "text-ink"}`}>
+                  {formatINR(forecast.data?.net_monthly ?? 0)}
+                </div>
+              </div>
+            </div>
             <div className="mt-4 space-y-3">
-              {(forecast.data || []).map((f: { month: string; projected_expense: number; projected_income: number; runway_months: number | null }) => (
+              {(forecast.data?.points ?? []).map((f) => (
                 <div key={f.month} className="flex justify-between text-sm border-b border-border pb-2">
-                  <span className="text-muted">{f.month}</span>
-                  <span className="font-mono">Exp {formatINR(f.projected_expense)} · Runway {f.runway_months ?? "—"}mo</span>
+                  <div>
+                    <div className="text-muted">{f.month}</div>
+                    <div className="text-muted text-xs">
+                      Committed {formatINR(f.committed_expense)} · Variable {formatINR(f.variable_expense)}
+                    </div>
+                  </div>
+                  <span className="font-mono">
+                    Exp {formatINR(f.projected_expense)} · Bal {formatINR(f.projected_balance)}
+                  </span>
                 </div>
               ))}
             </div>

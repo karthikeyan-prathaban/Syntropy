@@ -61,6 +61,25 @@ export type Transaction = {
   masked_acc_number?: string;
 };
 
+export type ForecastPoint = {
+  month: string;
+  projected_income: number;
+  projected_expense: number;
+  committed_expense: number;
+  variable_expense: number;
+  projected_balance: number;
+};
+
+export type Forecast = {
+  points: ForecastPoint[];
+  runway_months: number | null;
+  monthly_committed: number;
+  monthly_variable: number;
+  monthly_income: number;
+  net_monthly: number;
+  basis: string;
+};
+
 export const authApi = {
   login: (email: string, password: string) => api.post("/auth/login", { email, password }),
   signup: (data: { name: string; email: string; mobile: string; password: string }) =>
@@ -89,7 +108,7 @@ export const analyticsApi = {
   recurring: () => api.get("/analytics/recurring"),
   calendar: () => api.get("/analytics/calendar"),
   anomalies: () => api.get("/analytics/anomalies"),
-  forecast: () => api.get("/analytics/forecast"),
+  forecast: () => api.get<Forecast>("/analytics/forecast"),
 };
 
 export const transactionsApi = {
