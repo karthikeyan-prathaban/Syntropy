@@ -1,14 +1,13 @@
 services:
-  # ── Backend API ───────────────────────────────────────────────────────────
   - type: web
-    name: syntropy-api
+    name: novaa-api
     runtime: python
     region: singapore
     plan: free
     rootDir: backend
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
+    healthCheckPath: /api/v1/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
@@ -28,20 +27,19 @@ services:
         generateValue: true
       - key: DATABASE_URL
         fromDatabase:
-          name: syntropy-db
+          name: novaa-db
           property: connectionString
       - key: FRONTEND_URL
-        value: https://syntropy-k5fj.onrender.com
+        value: https://novaa.onrender.com
       - key: REDIRECT_URL
-        value: https://syntropy-k5fj.onrender.com/consent/callback
+        value: https://novaa.onrender.com/consent/callback
       - key: CORS_ORIGINS
-        value: https://syntropy-k5fj.onrender.com,https://syntropy.onrender.com,http://localhost:5173
+        value: https://novaa.onrender.com,http://localhost:5173
       - key: GEMINI_API_KEY
         sync: false
 
-  # ── Frontend Static Site ──────────────────────────────────────────────────
   - type: web
-    name: syntropy
+    name: novaa
     runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
@@ -56,12 +54,11 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE
-        value: https://syntropy-api.onrender.com
+        value: https://novaa-api.onrender.com
 
-# ── PostgreSQL Database ───────────────────────────────────────────────────────
 databases:
-  - name: syntropy-db
+  - name: novaa-db
     region: singapore
     plan: free
-    databaseName: syntropy
-    user: syntropy
+    databaseName: novaa
+    user: novaa
