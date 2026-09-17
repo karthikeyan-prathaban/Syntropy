@@ -1,4 +1,4 @@
-from app.core.crypto import decrypt_field, encrypt_field, mask_account_number, mask_email, mask_phone
+from app.core.crypto import decrypt_field, encrypt_field, mask_email, mask_phone
 from app.domain.models import User
 from app.schemas.common import UserResponse
 
@@ -24,5 +24,6 @@ def user_to_response(user: User) -> UserResponse:
         vua=vua,
         email=mask_email(email) if email else None,
         avatar_initials=user.avatar_initials,
+        email_verified=user.email_verified,
         created_at=user.created_at,
     )

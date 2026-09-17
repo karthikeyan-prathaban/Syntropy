@@ -99,7 +99,7 @@ def recurring_subscriptions(transactions: list[dict[str, Any]]) -> list[dict[str
         if len(txns) < 2:
             continue
         amounts = [t["amount"] for t in txns]
-        if len(set(round(a, 0) for a in amounts)) <= 2:
+        if len({round(a, 0) for a in amounts}) <= 2:
             recurring.append(
                 {
                     "merchant": merchant,

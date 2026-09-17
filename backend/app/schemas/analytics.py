@@ -51,6 +51,22 @@ class ForecastPoint(BaseModel):
     runway_months: float | None
 
 
+class BudgetCreate(BaseModel):
+    category: str = Field(min_length=1, max_length=80)
+    monthly_limit: float = Field(gt=0)
+    alert_threshold: float = Field(default=0.8, gt=0, le=1)
+
+
+class BudgetResponse(BaseModel):
+    id: int
+    category: str
+    monthly_limit: float
+    alert_threshold: float
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
 class RecallQuery(BaseModel):
     query: str = Field(min_length=2, max_length=500)
 

@@ -1,8 +1,8 @@
+import json
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any
-import json
-import os
 
 try:
     import google.generativeai as genai
@@ -94,7 +94,7 @@ def build_insights(transactions: list[dict[str, Any]], total_balance: float) -> 
     elif months_of_expenses < 1:
         health_score -= 10
 
-    if category_breakdown and category_breakdown[0]["percentage"] > 50:
+    if category_breakdown and float(category_breakdown[0]["percentage"]) > 50:
         health_score -= 10
 
     health_score = max(0, min(100, health_score))

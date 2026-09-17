@@ -1,0 +1,26 @@
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+exclude = ["alembic/versions", ".venv", "venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    "B008",  # FastAPI dependencies are function calls in defaults by design.
+    "E501",  # Line length is enforced by the formatter, not the linter.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SIM117"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+exclude = ["alembic/", "tests/", "\\.venv/", "venv/"]
+
+[[tool.mypy.overrides]]
+module = ["app.domain.models", "app.api.*"]
+# SQLAlchemy mapped attributes and FastAPI dependency defaults confuse strict checks.
+disable_error_code = ["assignment", "arg-type"]

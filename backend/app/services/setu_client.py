@@ -1,6 +1,6 @@
 import asyncio
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -68,7 +68,7 @@ class SetuClient:
 
     async def create_consent(self, mobile: str, redirect_url: str) -> dict[str, Any]:
         token = await self.get_token()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         end = now + timedelta(days=365)
         data_start = now - timedelta(days=365)
         clean_mobile = "".join(c for c in (mobile or "") if c.isdigit())[-10:]
@@ -117,7 +117,7 @@ class SetuClient:
 
     async def create_fi_session(self, consent_id: str) -> dict[str, Any]:
         token = await self.get_token()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         data_start = now - timedelta(days=365)
         payload = {
             "consentId": consent_id,

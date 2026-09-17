@@ -10,6 +10,7 @@ class UserResponse(BaseModel):
     vua: str
     email: str | None = None
     avatar_initials: str | None = None
+    email_verified: bool = False
     created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
@@ -29,8 +30,26 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
     user: UserResponse
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class EmailVerifyRequest(BaseModel):
+    token: str
 
 
 class TransactionResponse(BaseModel):

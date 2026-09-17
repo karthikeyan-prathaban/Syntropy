@@ -1,13 +1,18 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import require_demo_routes
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.domain.models import BankAccount, ConsentRecord, Transaction, User
+from app.enrichment.pipeline import run_enrichment
+from app.ingestion.base import CanonicalAccount, CanonicalTransaction, IngestionResult
+from app.ingestion.upsert import ingest
 from app.schemas.common import DashboardResponse, TransactionResponse
 from app.services.insight_engine import build_insights
 from app.services.user_service import user_to_response
@@ -96,48 +101,63 @@ async def get_dashboard(user: User = Depends(get_current_user), db: AsyncSession
     )
 
 
-@router.post("/mock/load")
+@router.post("/mock/load", dependencies=[Depends(require_demo_routes)])
 async def load_mock(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     fixture = Path(__file__).resolve().parents[3] / "fixtures" / "mock_data.json"
     data = json.loads(fixture.read_text())
 
-    await db.execute(delete(Transaction).where(Transaction.user_id == user.id))
-    await db.execute(delete(BankAccount).where(BankAccount.user_id == user.id))
-
-    account_map: dict[str, int] = {}
-    for acc in data["accounts"]:
-        row = BankAccount(user_id=user.id, **acc)
-        db.add(row)
-        await db.flush()
-        account_map[acc["linked_acc_ref"]] = row.id
-
-    for txn in data["transactions"]:
-        from datetime import datetime
-
-        ts = txn["transaction_timestamp"]
-        if isinstance(ts, str):
-            ts = datetime.fromisoformat(ts)
-        db.add(
-            Transaction(
-                user_id=user.id,
-                account_id=account_map[txn["linked_acc_ref"]],
-                txn_id=txn["txn_id"],
+    result = IngestionResult(
+        source="mock",
+        accounts=[
+            CanonicalAccount(
+                linked_acc_ref=acc["linked_acc_ref"],
+                masked_acc_number=acc["masked_acc_number"],
+                account_type=acc.get("account_type", "SAVINGS"),
+                current_balance=acc.get("current_balance", 0.0),
+                currency=acc.get("currency", "INR"),
+                fip_id=acc.get("fip_id"),
+            )
+            for acc in data["accounts"]
+        ],
+        transactions=[
+            CanonicalTransaction(
+                linked_acc_ref=txn["linked_acc_ref"],
                 amount=txn["amount"],
                 txn_type=txn["txn_type"],
                 narration=txn["narration"],
-                mode=txn["mode"],
-                category=txn["category"],
-                transaction_timestamp=ts,
+                transaction_timestamp=(
+                    datetime.fromisoformat(txn["transaction_timestamp"])
+                    if isinstance(txn["transaction_timestamp"], str)
+                    else txn["transaction_timestamp"]
+                ),
+                txn_id=txn["txn_id"],
+                mode=txn.get("mode", ""),
                 balance_after=txn.get("balance_after"),
             )
-        )
-
-    consent = ConsentRecord(
-        user_id=user.id,
-        request_id=f"mock-{user.id}",
-        consent_id=f"mock-consent-{user.id}",
-        status="ACTIVE",
+            for txn in data["transactions"]
+        ],
     )
-    db.add(consent)
-    await db.commit()
-    return {"status": "loaded", "transactions": len(data["transactions"])}
+    run = await ingest(db, user.id, result, trigger="mock")
+
+    existing = await db.execute(
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == user.id, ConsentRecord.request_id == f"mock-{user.id}"
+        )
+    )
+    if existing.scalar_one_or_none() is None:
+        db.add(
+            ConsentRecord(
+                user_id=user.id,
+                request_id=f"mock-{user.id}",
+                consent_id=f"mock-consent-{user.id}",
+                status="ACTIVE",
+            )
+        )
+        await db.commit()
+
+    await run_enrichment(db, user.id)
+    return {
+        "status": "loaded",
+        "transactions_new": run.rows_new,
+        "transactions_duplicate": run.rows_duplicate,
+    }

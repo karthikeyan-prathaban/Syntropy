@@ -47,6 +47,11 @@ Thumbs.db
 htmlcov/
 .coverage
 coverage.xml
+.mypy_cache/
+.ruff_cache/
+
+# Uploaded statements stored on the local backend
+backend/var/
 
 # Render build artifacts
 .render/

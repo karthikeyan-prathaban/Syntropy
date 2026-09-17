@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 
 def _search_transactions(query: str, transactions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -37,7 +38,7 @@ async def stream_recall_answer(query: str, transactions: list[dict[str, Any]], i
             if t["txn_type"] == "DEBIT":
                 by_cat[t["category"]] += t["amount"]
         if by_cat:
-            top_cat = max(by_cat, key=by_cat.get)
+            top_cat = max(by_cat, key=lambda c: by_cat[c])
             answer += f"Most of this was in {top_cat} (₹{by_cat[top_cat]:,.0f}). "
     else:
         answer += "Try linking a bank account or broadening your search terms."

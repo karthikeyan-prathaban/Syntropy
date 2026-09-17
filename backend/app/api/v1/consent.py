@@ -1,26 +1,54 @@
-import asyncio
+import logging
+from datetime import datetime
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.crypto import decrypt_field
 from app.core.security import get_current_user
 from app.db.session import get_db
-from app.domain.models import BankAccount, ConsentRecord, Transaction, User
-from app.services.fi_parser import parse_deposit_fi_data
+from app.domain.models import ConsentRecord, User
+from app.enrichment.pipeline import run_enrichment
+from app.ingestion.aa_source import AAError, aa_source
+from app.ingestion.upsert import ingest
 from app.services.setu_client import setu_client
+from app.workers.queue import enqueue
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/consent", tags=["consent"])
+
+ACTIVE_STATUSES = {"ACTIVE", "APPROVED", "SUCCESS"}
+
+
+async def _get_owned_consent(db: AsyncSession, user_id: int, request_id: str) -> ConsentRecord:
+    """Every consent lookup is scoped by user_id, never by request_id alone."""
+    result = await db.execute(
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == user_id, ConsentRecord.request_id == request_id
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Consent not found")
+    return record
 
 
 @router.post("/create")
 async def create_consent(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     settings = get_settings()
-    from app.core.crypto import decrypt_field
-
     mobile = decrypt_field(user.mobile_enc)
-    data = await setu_client.create_consent(mobile, settings.consent_redirect_url)
+    if not mobile:
+        raise HTTPException(status_code=400, detail="Add a mobile number before linking a bank")
+
+    try:
+        data = await setu_client.create_consent(mobile, settings.consent_redirect_url)
+    except httpx.HTTPError as exc:
+        logger.error("Setu consent creation failed for user %s: %s", user.id, exc)
+        raise HTTPException(status_code=502, detail="Account Aggregator is unavailable") from exc
+
     record = ConsentRecord(
         user_id=user.id,
         request_id=data.get("id") or data.get("requestId") or data.get("request_id", ""),
@@ -37,81 +65,88 @@ async def create_consent(user: User = Depends(get_current_user), db: AsyncSessio
 
 
 @router.get("/{request_id}/status")
-async def consent_status(request_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ConsentRecord).where(ConsentRecord.request_id == request_id))
-    record = result.scalar_one_or_none()
-    if not record:
-        raise HTTPException(status_code=404, detail="Consent not found")
+async def consent_status(
+    request_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    record = await _get_owned_consent(db, user.id, request_id)
     try:
         data = await setu_client.get_consent(request_id)
-        status = data.get("status") or record.status
+        record.status = data.get("status") or record.status
         consent_id = data.get("consentId") or data.get("consent_id")
-        record.status = status
         if consent_id:
             record.consent_id = consent_id
         await db.commit()
+    except httpx.HTTPError as exc:
+        # The cached status is still useful, but the failure must not be silent.
+        logger.warning("Setu status poll failed for consent %s: %s", request_id, exc)
     except Exception:
-        pass
-    return {"request_id": record.request_id, "status": record.status, "consent_id": record.consent_id}
+        logger.exception("Unexpected error polling consent %s", request_id)
+
+    return {
+        "request_id": record.request_id,
+        "status": record.status,
+        "consent_id": record.consent_id,
+    }
 
 
 @router.post("/{request_id}/fetch")
-async def fetch_financial_data(request_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ConsentRecord).where(ConsentRecord.request_id == request_id))
-    record = result.scalar_one_or_none()
-    if not record or not record.consent_id:
+async def fetch_financial_data(
+    request_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    record = await _get_owned_consent(db, user.id, request_id)
+    if not record.consent_id:
         raise HTTPException(status_code=400, detail="Consent not active")
-    if record.status not in {"ACTIVE", "APPROVED", "SUCCESS"}:
+    if record.status not in ACTIVE_STATUSES:
         raise HTTPException(status_code=400, detail=f"Consent status: {record.status}")
 
-    session = await setu_client.create_fi_session(record.consent_id)
-    session_id = session.get("id") or session.get("sessionId")
-    fi_data = {}
-    for _ in range(15):
-        fi_data = await setu_client.get_fi_session(session_id)
-        if fi_data.get("status") in {"COMPLETED", "PARTIAL"}:
-            break
-        await asyncio.sleep(2)
+    try:
+        result = await aa_source.fetch(consent_id=record.consent_id)
+    except AAError as exc:
+        logger.warning("AA fetch failed for user %s: %s", user.id, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        logger.error("Setu transport error during fetch for user %s: %s", user.id, exc)
+        raise HTTPException(status_code=502, detail="Account Aggregator is unavailable") from exc
 
-    accounts, transactions = parse_deposit_fi_data(fi_data)
-    await db.execute(delete(Transaction).where(Transaction.user_id == record.user_id))
-    await db.execute(delete(BankAccount).where(BankAccount.user_id == record.user_id))
-
-    account_map: dict[str, int] = {}
-    for acc in accounts:
-        row = BankAccount(user_id=record.user_id, **acc)
-        db.add(row)
-        await db.flush()
-        account_map[acc["linked_acc_ref"]] = row.id
-
-    for txn in transactions:
-        db.add(
-            Transaction(
-                user_id=record.user_id,
-                account_id=account_map[txn["linked_acc_ref"]],
-                txn_id=txn["txn_id"],
-                amount=txn["amount"],
-                txn_type=txn["txn_type"],
-                narration=txn["narration"],
-                mode=txn["mode"],
-                category=txn["category"],
-                transaction_timestamp=txn["transaction_timestamp"],
-                balance_after=txn.get("balance_after"),
-            )
-        )
+    run = await ingest(db, user.id, result, trigger="consent_fetch")
+    record.last_fetched_at = datetime.utcnow()
     await db.commit()
-    return {"accounts": len(accounts), "transactions": len(transactions), "session_status": fi_data.get("status")}
+
+    if not await enqueue("enrich_user_job", user.id):
+        await run_enrichment(db, user.id)
+
+    return {
+        "accounts": run.accounts_seen,
+        "transactions_received": run.rows_in,
+        "transactions_new": run.rows_new,
+        "transactions_duplicate": run.rows_duplicate,
+        "session_status": result.meta.get("session_status"),
+    }
 
 
 @router.post("/{consent_id}/revoke")
-async def revoke_consent(consent_id: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def revoke_consent(
+    consent_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(ConsentRecord).where(ConsentRecord.user_id == user.id, ConsentRecord.consent_id == consent_id)
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == user.id, ConsentRecord.consent_id == consent_id
+        )
     )
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail="Consent not found")
-    await setu_client.revoke_consent(consent_id)
+    try:
+        await setu_client.revoke_consent(consent_id)
+    except httpx.HTTPError as exc:
+        logger.error("Setu revoke failed for consent %s: %s", consent_id, exc)
+        raise HTTPException(status_code=502, detail="Could not revoke consent upstream") from exc
     record.status = "REVOKED"
     await db.commit()
     return {"status": "REVOKED", "consent_id": consent_id}

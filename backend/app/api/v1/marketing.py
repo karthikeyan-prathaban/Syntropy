@@ -1,13 +1,30 @@
+import logging
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
+from app.core.storage import storage
 from app.db.session import get_db
-from app.domain.models import BankAccount, ConsentRecord, Transaction, User, WaitlistEntry
-from sqlalchemy import delete
+from app.domain.models import (
+    BalanceSnapshot,
+    BankAccount,
+    Budget,
+    ConsentRecord,
+    Goal,
+    IngestionRun,
+    Merchant,
+    RecurringSeries,
+    RefreshToken,
+    StatementUpload,
+    Transaction,
+    User,
+    WaitlistEntry,
+)
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["marketing"])
 
 
@@ -47,8 +64,31 @@ async def track_event(payload: AnalyticsEvent):
 
 @router.delete("/me/data")
 async def purge_user_data(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Transaction).where(Transaction.user_id == user.id))
-    await db.execute(delete(BankAccount).where(BankAccount.user_id == user.id))
-    await db.execute(delete(ConsentRecord).where(ConsentRecord.user_id == user.id))
+    """DPDP Act 2023 erasure. Every table holding this user's financial data is
+    cleared, including the uploaded statement files in object storage."""
+    uploads = (
+        await db.execute(select(StatementUpload).where(StatementUpload.user_id == user.id))
+    ).scalars().all()
+    for upload in uploads:
+        try:
+            await storage.delete(upload.storage_key)
+        except Exception:
+            logger.exception("Could not delete stored statement %s", upload.storage_key)
+
+    for model in (
+        Transaction,
+        BalanceSnapshot,
+        RecurringSeries,
+        Merchant,
+        Budget,
+        Goal,
+        StatementUpload,
+        IngestionRun,
+        BankAccount,
+        ConsentRecord,
+        RefreshToken,
+    ):
+        await db.execute(delete(model).where(model.user_id == user.id))
+
     await db.commit()
-    return {"status": "purged"}
+    return {"status": "purged", "statements_deleted": len(uploads)}
