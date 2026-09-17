@@ -32,6 +32,7 @@ logs/
 node_modules/
 dist/
 .cache/
+*.tsbuildinfo
 
 # Editor
 .vscode/
