@@ -10,6 +10,7 @@ from app.core.logging import configure_logging
 from app.core.observability import ObservabilityMiddleware, init_sentry, metrics_endpoint
 from app.core.rate_limit import RateLimitMiddleware
 from app.core.redis import close_redis
+from app.db.schema_check import verify_schema
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -22,8 +23,10 @@ init_sentry()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Schema is owned by Alembic; nothing is created at runtime.
+    # Schema is owned by Alembic; nothing is created at runtime. This only checks
+    # that the migrations have actually been applied.
     logger.info("NOVAA API starting in %s mode", settings.environment)
+    await verify_schema()
     yield
     await close_redis()
     from app.workers.queue import close_queue

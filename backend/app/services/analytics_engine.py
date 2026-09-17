@@ -15,6 +15,12 @@ def _merchant_from_narration(narration: str) -> str:
     return text.split("/")[0].split("-")[0].strip().title()[:40] or "Unknown"
 
 
+def _merchant_of(t: dict[str, Any]) -> str:
+    """Enrichment already resolved the merchant; the narration split is only a fallback
+    for rows ingested before the pipeline last ran."""
+    return t.get("merchant") or _merchant_from_narration(t["narration"])
+
+
 def txn_dicts(transactions: list[Any]) -> list[dict[str, Any]]:
     return [
         {
@@ -22,6 +28,7 @@ def txn_dicts(transactions: list[Any]) -> list[dict[str, Any]]:
             "amount": t.amount,
             "txn_type": t.txn_type,
             "narration": t.narration,
+            "merchant": t.merchant_name,
             "mode": t.mode,
             "category": t.category,
             "transaction_timestamp": t.transaction_timestamp,
@@ -73,7 +80,7 @@ def merchant_leaderboard(transactions: list[dict[str, Any]]) -> list[dict[str, A
     for t in transactions:
         if t["txn_type"] != "DEBIT":
             continue
-        m = _merchant_from_narration(t["narration"])
+        m = _merchant_of(t)
         merchants[m]["amount"] += t["amount"]
         merchants[m]["count"] += 1
         merchants[m]["category"] = t["category"]
@@ -92,7 +99,7 @@ def recurring_subscriptions(transactions: list[dict[str, Any]]) -> list[dict[str
     debits = [t for t in transactions if t["txn_type"] == "DEBIT"]
     by_merchant: dict[str, list[dict]] = defaultdict(list)
     for t in debits:
-        by_merchant[_merchant_from_narration(t["narration"])].append(t)
+        by_merchant[_merchant_of(t)].append(t)
 
     recurring = []
     for merchant, txns in by_merchant.items():

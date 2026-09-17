@@ -30,6 +30,7 @@ async def _txn_dicts(db: AsyncSession, user_id: int) -> list[dict]:
             "amount": t.amount,
             "txn_type": t.txn_type,
             "narration": t.narration,
+            "merchant": t.merchant_name,
             "mode": t.mode,
             "category": t.category,
             "transaction_timestamp": t.transaction_timestamp,

@@ -13,6 +13,7 @@ from app.analytics.monthly_close import (
 )
 from app.analytics.robust import mad, robust_z
 from app.domain.models import Budget, RecurringSeries, Transaction
+from app.services.analytics_engine import merchant_leaderboard, txn_dicts
 
 
 def _txn(
@@ -334,3 +335,48 @@ def test_upcoming_charges_lists_only_the_near_horizon():
 
     upcoming = upcoming_charges([soon, far], days=30)
     assert [u["merchant"] for u in upcoming] == ["Netflix"]
+
+
+def _noisy(narration: str, merchant: str, amount: float, category: str) -> Transaction:
+    txn = _txn(amount, "DEBIT", datetime(2026, 9, 3), category=category, merchant=merchant)
+    txn.narration = narration
+    txn.raw_narration = narration
+    return txn
+
+
+def test_merchant_leaderboard_uses_enriched_names_not_the_raw_narration():
+    """The narration split turns 'UPI-SWIGGY-...' into 'Upi', which buckets every
+    UPI payment under one meaningless merchant."""
+    transactions = [
+        _noisy("UPI-SWIGGY-swiggy@ybl-HDFC-123456789", "Swiggy", 450.0, "Food & Dining"),
+        _noisy("POS 4321XXXXXXXX1234 AMAZON RETAIL", "Amazon", 2499.0, "Shopping"),
+    ]
+
+    board = merchant_leaderboard(txn_dicts(transactions))
+
+    assert [row["merchant"] for row in board] == ["Amazon", "Swiggy"]
+
+
+def test_merchant_leaderboard_merges_the_same_merchant_across_sources():
+    """A statement row and an AA row for the same merchant must collapse into one
+    line, which only happens if both read the enriched name."""
+    transactions = [
+        _noisy("POS 4321XXXXXXXX1234 AMAZON RETAIL", "Amazon", 2499.0, "Shopping"),
+        _noisy("amazon purchase", "Amazon", 2499.0, "Shopping"),
+    ]
+
+    board = merchant_leaderboard(txn_dicts(transactions))
+
+    assert len(board) == 1
+    assert board[0]["merchant"] == "Amazon"
+    assert board[0]["count"] == 2
+    assert board[0]["amount"] == 4998.0
+
+
+def test_merchant_leaderboard_falls_back_when_enrichment_has_not_run():
+    txn = _noisy("BigBasket order", "BigBasket", 1200.0, "Groceries")
+    txn.merchant_name = None
+
+    board = merchant_leaderboard(txn_dicts([txn]))
+
+    assert board[0]["merchant"] == "Bigbasket Order"

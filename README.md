@@ -83,6 +83,10 @@ arq app.workers.settings.WorkerSettings
 It handles statement parsing, the twice-daily AA refresh, nightly enrichment,
 and the retention purge.
 
+Run the worker whenever Redis is running. The API only falls back to inline
+parsing when there is no queue at all, so Redis up with no worker leaves every
+statement upload sitting at `pending`.
+
 ## Architecture
 
 ```
